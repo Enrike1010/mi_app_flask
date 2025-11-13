@@ -1,12 +1,14 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, render_template, request
 import numpy as np
+import pandas as pd
+from tensorflow.keras.models import load_model
 import joblib
 
 app = Flask(__name__)
 
 # Cargar modelo y scaler
-model = joblib.load('modelo_enfermedades.pkl')
-scaler = joblib.load('scaler.pkl')
+model = load_model("modelo_multienfermedades.keras")
+scaler = joblib.load("scaler.pkl")
 
 @app.route('/')
 def home():
@@ -15,12 +17,29 @@ def home():
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        data = [float(x) for x in request.form.values()]
-        data = np.array([data])
-        data_scaled = scaler.transform(data)
-        prediction = model.predict(data_scaled)
-        return render_template('index.html', prediction_text=f'Resultado: {prediction[0]}')
-    except Exception as e:
-        return jsonify({'error': str(e)})
+        # Obtener valores del formulario
+        age = float(request.form['age'])
+        sex = float(request.form['sex'])
+        bmi = float(request.form['bmi'])
+        glucose = float(request.form['glucose'])
+        cholesterol = float(request.form['cholesterol'])
+        smoking = float(request.form['smoking'])
+        exercise = float(request.form['exercise'])
+        alcohol = float(request.form['alcohol'])
+        family_history = float(request.form['family_history'])
 
-# Render detecta la variable 'app', no hace falta app.run()
+        # Crear array y normalizar
+        datos = np.array([[age, sex, bmi, glucose, cholesterol, smoking, exercise, alcohol, family_history]])
+        datos_norm = scaler.transform(datos)
+
+        # Predecir
+        pred = model.predict(datos_norm)
+        pred_bin = (pred > 0.5).astype(int)
+        resultado = pd.DataFrame(pred_bin, columns=["diabetes","hypertension","heart_disease","obesity","lung_cancer"])
+
+        return render_template('index.html', prediction_text=resultado.to_html(index=False))
+    except Exception as e:
+        return render_template('index.html', prediction_text=f"Error: {e}")
+
+if __name__ == "__main__":
+    app.run(debug=True)
