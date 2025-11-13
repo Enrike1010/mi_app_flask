@@ -7,7 +7,7 @@ import joblib
 app = Flask(__name__)
 
 # Cargar modelo y scaler
-model = load_model("modelo_multienfermedades.keras")
+model = load_model("modelo_enfermedades.keras")
 scaler = joblib.load("scaler.pkl")
 
 @app.route('/')
